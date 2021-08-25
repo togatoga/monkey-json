@@ -146,11 +146,20 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn push_utf16(result: &mut String, utf16: &mut Vec<u16>) {
-        if let Ok(utf16_str) = String::from_utf16(utf16) {
-            result.push_str(&utf16_str);
-            utf16.clear();
+    fn push_utf16(result: &mut String, utf16: &mut Vec<u16>) -> Result<(), LexerError> {
+        if utf16.is_empty() {
+            return Ok(());
         }
+        match String::from_utf16(utf16) {
+            Ok(utf16_str) => {
+                result.push_str(&utf16_str);
+                utf16.clear();
+            }
+            Err(e) => {
+                return Err(LexerError::new(&format!("error: {}", e.to_string())));
+            }
+        };
+        Ok(())
     }
     fn parse_string_token(&mut self) -> Result<Option<Token>, LexerError> {
         let mut utf16 = vec![];
@@ -159,7 +168,7 @@ impl<'a> Lexer<'a> {
             match c1 {
                 // end
                 '\"' => {
-                    Self::push_utf16(&mut result, &mut utf16);
+                    Self::push_utf16(&mut result, &mut utf16)?;
                     return Ok(Some(Token::String(result)));
                 }
                 // escape
@@ -169,26 +178,30 @@ impl<'a> Lexer<'a> {
                         .next()
                         .ok_or_else(|| LexerError::new("error: a next char is expected"))?;
                     if matches!(c2, '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't') {
-                        Self::push_utf16(&mut result, &mut utf16);
+                        Self::push_utf16(&mut result, &mut utf16)?;
                         result.push('\\');
                         result.push(c2);
                     } else if c2 == 'u' {
                         // UTF-16
                         // \u0000 ~ \uFFFF
-                        let mut hexs: Vec<char> = vec![];
-                        for _ in 0..4 {
-                            let c = self.chars.next().ok_or_else(|| {
-                                LexerError::new("error: UTF-16 value is expected \\uxxxx")
-                            })?;
-                            if c.is_ascii_hexdigit() {
-                                hexs.push(c);
-                            }
-                        }
+                        let hexs = (0..4)
+                            .filter_map(|_| {
+                                let c = self.chars.next()?;
+                                if c.is_ascii_hexdigit() {
+                                    Some(c)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<_>>();
 
                         match u16::from_str_radix(&hexs.iter().collect::<String>(), 16) {
                             Ok(code_point) => utf16.push(code_point),
                             Err(e) => {
-                                return Err(LexerError::new(&format!("error: {}", e.to_string())))
+                                return Err(LexerError::new(&format!(
+                                    "error: a unicode character is expected {}",
+                                    e.to_string()
+                                )))
                             }
                         };
                     } else {
@@ -199,7 +212,7 @@ impl<'a> Lexer<'a> {
                     }
                 }
                 _ => {
-                    Self::push_utf16(&mut result, &mut utf16);
+                    Self::push_utf16(&mut result, &mut utf16)?;
                     result.push(c1);
                 }
             }
