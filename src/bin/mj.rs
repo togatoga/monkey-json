@@ -191,7 +191,7 @@ fn main() {
             .expect("error: can't read a string from stdin");
         buffer
     };
-    let json_value = monkey_json::parse(input_json).expect("error: failed to parse json");
+    let json_value = monkey_json::parse(&input_json).expect("error: failed to parse json");
     if minimize_output {
         do_minimum_output(&json_value, color_output);
     } else {

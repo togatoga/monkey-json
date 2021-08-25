@@ -1,25 +1,22 @@
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Symbol {
-    LeftBrace,    // {　JSON object 開始文字
-    RightBrace,   // }　JSON object 終了文字
-    LeftBracket,  // [　JSON array  開始文字
-    RightBracket, // ]　JSON array  終了文字
-    Comma,        // ,　JSON value  区切り文字
-    Colon,        // :　"key":value 区切り文字
-}
+use std::{iter::Peekable, str::Chars};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     String(String), // 文字列
     Number(f64),    // 数値
     Bool(bool),     // 真偽値
-    Symbol(Symbol), // JSONの構文に必要な記号
     Null,           // Null
+    WhiteSpace,     //
+    LeftBrace,      // {　JSON object 開始文字
+    RightBrace,     // }　JSON object 終了文字
+    LeftBracket,    // [　JSON array  開始文字
+    RightBracket,   // ]　JSON array  終了文字
+    Comma,          // ,　JSON value  区切り文字
+    Colon,          // :　"key":value 区切り文字
 }
 
-pub struct Lexer {
-    chars: Vec<char>,
-    index: usize,
+pub struct Lexer<'a> {
+    pub chars: Peekable<Chars<'a>>,
 }
 
 #[derive(Debug)]
@@ -35,159 +32,142 @@ impl LexerError {
     }
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     pub fn new(input: &str) -> Lexer {
         Lexer {
-            chars: input.chars().collect(),
-            index: 0,
-        }
-    }
-    fn advance(&mut self, x: usize) {
-        self.index += x;
-    }
-
-    fn peek(&self) -> Option<char> {
-        if self.index < self.chars.len() {
-            Some(self.chars[self.index])
-        } else {
-            None
+            chars: input.chars().peekable(),
         }
     }
 
-    fn skip_whitespace(&mut self) {
-        while let Some(c) = self.peek() {
-            if c.is_whitespace() || c == '\n' {
-                self.advance(1);
-            } else {
-                break;
-            }
+    fn consume_return_token(&mut self, token: Token) -> Option<Token> {
+        self.chars.next();
+        Some(token)
+    }
+
+    fn next_token(&mut self) -> Result<Option<Token>, LexerError> {
+        match self.chars.peek() {
+            Some(c) => match c {
+                c if c.is_whitespace() || *c == '\n' => {
+                    Ok(self.consume_return_token(Token::WhiteSpace))
+                }
+                '{' => Ok(self.consume_return_token(Token::LeftBrace)),
+                '}' => Ok(self.consume_return_token(Token::RightBrace)),
+                '[' => Ok(self.consume_return_token(Token::LeftBracket)),
+                ']' => Ok(self.consume_return_token(Token::RightBracket)),
+                ',' => Ok(self.consume_return_token(Token::Comma)),
+                ':' => Ok(self.consume_return_token(Token::Colon)),
+                // "togatoga"
+                '"' => {
+                    // parse string
+                    self.chars.next();
+                    self.parse_string_token()
+                }
+                // -1235
+                c if c.is_numeric() || matches!(c, '+' | '-' | '.') => self.parse_number_token(),
+                // true
+                't' => self.parse_bool_token(true),
+                // false
+                'f' => self.parse_bool_token(false),
+                // null
+                'n' => self.parse_null_token(),
+                _ => Ok(None),
+            },
+            None => Ok(None),
         }
     }
 
     pub fn lex(&mut self) -> Result<Vec<Token>, LexerError> {
         let mut tokens = vec![];
-        loop {
-            self.skip_whitespace();
-            if let Some(c) = self.peek() {
-                match c {
-                    '{' | '}' | '[' | ']' | ',' | ':' => {
-                        let symbol = match c {
-                            '{' => Symbol::LeftBrace,
-                            '}' => Symbol::RightBrace,
-                            '[' => Symbol::LeftBracket,
-                            ']' => Symbol::RightBracket,
-                            ',' => Symbol::Comma,
-                            ':' => Symbol::Colon,
-                            _ => {
-                                return Err(LexerError::new(&format!(
-                                    "Lexer Error: Unexpected char: {}",
-                                    c
-                                )));
-                            }
-                        };
 
-                        tokens.push(Token::Symbol(symbol));
-                        self.advance(1);
-                    }
-                    _ => {
-                        // greedy match
-                        if let Some(token) = self.parse_string() {
-                            tokens.push(token);
-                            continue;
-                        }
-
-                        if let Some(token) = self.parse_number() {
-                            tokens.push(token);
-                            continue;
-                        }
-
-                        if let Some(token) = self.parse_bool() {
-                            tokens.push(token);
-                            continue;
-                        }
-
-                        if let Some(token) = self.parse_null() {
-                            tokens.push(token);
-                            continue;
-                        }
-                        return Err(LexerError::new(
-                            "Lexer Error: Failed all parsings (string, number, bool, null)",
-                        ));
-                    }
+        while let Some(token) = self.next_token()? {
+            match token {
+                Token::WhiteSpace => {}
+                _ => {
+                    tokens.push(token);
                 }
-            } else {
-                break;
             }
         }
 
         Ok(tokens)
     }
 
-    fn parse_bool(&mut self) -> Option<Token> {
-        let b: String = self
-            .chars
-            .iter()
-            .skip(self.index)
-            .take_while(|x| matches!(x, 't' | 'r' | 'u' | 'e' | 'f' | 'a' | 'l' | 's'))
-            .take(5)
-            .collect();
-        match b.as_str() {
-            "true" => {
-                self.advance(4);
-                Some(Token::Bool(true))
-            }
-            "false" => {
-                self.advance(5);
-                Some(Token::Bool(false))
-            }
-            _ => None,
+    fn parse_null_token(&mut self) -> Result<Option<Token>, LexerError> {
+        let s = (0..4).filter_map(|_| self.chars.next()).collect::<String>();
+
+        if s == "null" {
+            Ok(Some(Token::Null))
+        } else {
+            Err(LexerError::new(&format!(
+                "error: a null value is expected {}",
+                s
+            )))
         }
     }
-    fn parse_null(&mut self) -> Option<Token> {
-        let n: String = self
-            .chars
-            .iter()
-            .skip(self.index)
-            .take_while(|x| matches!(x, 'n' | 'u' | 'l'))
-            .take(4)
-            .collect();
-        match n.as_str() {
-            "null" => {
-                self.advance(4);
-                Some(Token::Null)
+
+    fn parse_bool_token(&mut self, b: bool) -> Result<Option<Token>, LexerError> {
+        if b {
+            let s = (0..4).filter_map(|_| self.chars.next()).collect::<String>();
+            if s == "true" {
+                Ok(Some(Token::Bool(true)))
+            } else {
+                Err(LexerError::new(&format!(
+                    "error: a boolean true is expected {}",
+                    s
+                )))
             }
-            _ => None,
+        } else {
+            let s = (0..5).filter_map(|_| self.chars.next()).collect::<String>();
+
+            if s == "false" {
+                Ok(Some(Token::Bool(false)))
+            } else {
+                Err(LexerError::new(&format!(
+                    "error: a boolean false is expected {}",
+                    s
+                )))
+            }
         }
     }
+    fn parse_number_token(&mut self) -> Result<Option<Token>, LexerError> {
+        // parse number
+        let mut number_str = String::new();
+        while let Some(&c) = self.chars.peek() {
+            if c.is_numeric() | matches!(c, '+' | '-' | 'e' | 'E' | '.') {
+                self.chars.next();
+                number_str.push(c);
+            } else {
+                break;
+            }
+        }
+
+        match number_str.parse::<f64>() {
+            Ok(number) => Ok(Some(Token::Number(number))),
+            Err(e) => Err(LexerError::new(&format!("error: {}", e.to_string()))),
+        }
+    }
+
     fn push_utf16(result: &mut String, utf16: &mut Vec<u16>) {
-        if let Ok(utf16_str) = String::from_utf16(&utf16) {
+        if let Ok(utf16_str) = String::from_utf16(utf16) {
             result.push_str(&utf16_str);
             utf16.clear();
         }
     }
-    fn parse_string(&mut self) -> Option<Token> {
-        if self.peek()? != '"' {
-            return None;
-        }
+    fn parse_string_token(&mut self) -> Result<Option<Token>, LexerError> {
         let mut utf16 = vec![];
         let mut result = String::new();
-
-        let mut chars_iter = self.chars.iter().skip(self.index + 1);
-        let mut seek = 1;
-        while let Some(c1) = chars_iter.next() {
-            seek += 1;
+        while let Some(c1) = self.chars.next() {
             match c1 {
                 // end
                 '\"' => {
-                    self.advance(seek);
                     Self::push_utf16(&mut result, &mut utf16);
-                    return Some(Token::String(result));
+                    return Ok(Some(Token::String(result)));
                 }
                 // escape
                 '\\' => {
-                    let c2 = *chars_iter.next()?;
-                    seek += 1;
-
+                    let c2 = self
+                        .chars
+                        .next()
+                        .ok_or_else(|| LexerError::new("error: a next char is expected"))?;
                     if matches!(c2, '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't') {
                         Self::push_utf16(&mut result, &mut utf16);
                         result.push('\\');
@@ -195,50 +175,36 @@ impl Lexer {
                     } else if c2 == 'u' {
                         // UTF-16
                         // \u0000 ~ \uFFFF
-
                         let mut hexs: Vec<char> = vec![];
                         for _ in 0..4 {
-                            let c = chars_iter.next()?;
-                            seek += 1;
+                            let c = self.chars.next().ok_or_else(|| {
+                                LexerError::new("error: UTF-16 value is expected \\uxxxx")
+                            })?;
                             if c.is_ascii_hexdigit() {
-                                hexs.push(*c);
+                                hexs.push(c);
                             }
                         }
 
-                        let hex_str: String = hexs.iter().collect();
-                        let code_point = u16::from_str_radix(&hex_str, 16).ok()?;
-                        utf16.push(code_point);
+                        match u16::from_str_radix(&hexs.iter().collect::<String>(), 16) {
+                            Ok(code_point) => utf16.push(code_point),
+                            Err(e) => {
+                                return Err(LexerError::new(&format!("error: {}", e.to_string())))
+                            }
+                        };
                     } else {
-                        return None;
+                        return Err(LexerError::new(&format!(
+                            "error: an unexpected escaped char {}",
+                            c2
+                        )));
                     }
                 }
                 _ => {
                     Self::push_utf16(&mut result, &mut utf16);
-                    result.push(*c1);
+                    result.push(c1);
                 }
             }
         }
-
-        None
-    }
-
-    fn parse_number(&mut self) -> Option<Token> {
-        let c = self.peek()?;
-        if !c.is_numeric() && c != '-' {
-            return None;
-        }
-
-        // parse number
-        let number_str = self
-            .chars
-            .iter()
-            .skip(self.index)
-            .take_while(|&c| matches!(c, '+' | '-' | 'e' | 'E' | '.') | c.is_numeric())
-            .collect::<String>();
-        let read_cnt = number_str.len();
-        let number = number_str.parse::<f64>().ok()?;
-        self.advance(read_cnt);
-        Some(Token::Number(number))
+        Ok(None)
     }
 }
 
@@ -324,40 +290,40 @@ mod tests {
         let tokens = Lexer::new(obj).lex().unwrap();
         let result_tokens = [
             // start {
-            Token::Symbol(Symbol::LeftBrace),
+            Token::LeftBrace,
             // begin: "number": 123,
             Token::String("number".to_string()),
-            Token::Symbol(Symbol::Colon),
+            Token::Colon,
             Token::Number(123f64),
-            Token::Symbol(Symbol::Comma),
+            Token::Comma,
             // end
 
             // begin: "boolean": true,
             Token::String("boolean".to_string()),
-            Token::Symbol(Symbol::Colon),
+            Token::Colon,
             Token::Bool(true),
-            Token::Symbol(Symbol::Comma),
+            Token::Comma,
             // end
 
             // begin: "string": "togatoga",
             Token::String("string".to_string()),
-            Token::Symbol(Symbol::Colon),
+            Token::Colon,
             Token::String("togatoga".to_string()),
-            Token::Symbol(Symbol::Comma),
+            Token::Comma,
             // end
 
             // begin: "object": {
             Token::String("object".to_string()),
-            Token::Symbol(Symbol::Colon),
-            Token::Symbol(Symbol::LeftBrace),
+            Token::Colon,
+            Token::LeftBrace,
             // begin: "number": 2E10,
             Token::String("number".to_string()),
-            Token::Symbol(Symbol::Colon),
+            Token::Colon,
             Token::Number(20000000000f64),
             // end
-            Token::Symbol(Symbol::RightBrace),
+            Token::RightBrace,
             // end
-            Token::Symbol(Symbol::RightBrace),
+            Token::RightBrace,
             // end
         ];
         tokens
@@ -373,15 +339,15 @@ mod tests {
         let a = "[true, {\"キー\": null}]";
         let tokens = Lexer::new(a).lex().unwrap();
         let result_tokens = vec![
-            Token::Symbol(Symbol::LeftBracket),
+            Token::LeftBracket,
             Token::Bool(true),
-            Token::Symbol(Symbol::Comma),
-            Token::Symbol(Symbol::LeftBrace),
+            Token::Comma,
+            Token::LeftBrace,
             Token::String("キー".to_string()),
-            Token::Symbol(Symbol::Colon),
+            Token::Colon,
             Token::Null,
-            Token::Symbol(Symbol::RightBrace),
-            Token::Symbol(Symbol::RightBracket),
+            Token::RightBrace,
+            Token::RightBracket,
         ];
         tokens
             .iter()

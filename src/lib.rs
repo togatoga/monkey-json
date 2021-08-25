@@ -102,10 +102,10 @@ impl Parser {
         Parser { tokens, index: 0 }
     }
     fn parse_array(&mut self) -> Result<Value, ParseError> {
-        assert_eq!(self.peek(), Some(&Token::Symbol(Symbol::LeftBracket)));
+        assert_eq!(self.peek(), Some(&Token::LeftBracket));
         self.advance();
         let mut array = vec![];
-        if self.peek() == Some(&Token::Symbol(Symbol::RightBracket)) {
+        if self.peek() == Some(&Token::RightBracket) {
             self.advance();
             return Ok(Value::Array(array));
         }
@@ -114,11 +114,11 @@ impl Parser {
             array.push(value);
             let token = self.peek().unwrap();
             match token {
-                Token::Symbol(Symbol::RightBracket) => {
+                Token::RightBracket => {
                     self.advance();
                     return Ok(Value::Array(array));
                 }
-                Token::Symbol(Symbol::Comma) => {
+                Token::Comma => {
                     self.advance();
                 }
                 _ => {
@@ -129,11 +129,11 @@ impl Parser {
         Err(ParseError::new("Failed to parse array"))
     }
     fn parse_object(&mut self) -> Result<Value, ParseError> {
-        assert_eq!(self.peek(), Some(&Token::Symbol(Symbol::LeftBrace)));
+        assert_eq!(self.peek(), Some(&Token::LeftBrace));
         self.advance();
         let mut object = BTreeMap::new();
         let token = self.peek();
-        if token == Some(&Token::Symbol(Symbol::RightBrace)) {
+        if token == Some(&Token::RightBrace) {
             return Ok(Value::Object(object));
         }
 
@@ -152,7 +152,7 @@ impl Parser {
                 }
             };
             // :
-            if self.peek() == Some(&Token::Symbol(Symbol::Colon)) {
+            if self.peek() == Some(&Token::Colon) {
                 self.advance();
             } else {
                 panic!("Expected colon after key in object");
@@ -164,11 +164,11 @@ impl Parser {
             // }
             let token = self.peek().unwrap().clone();
             match token {
-                Token::Symbol(Symbol::RightBrace) => {
+                Token::RightBrace => {
                     self.advance();
                     return Ok(Value::Object(object));
                 }
-                Token::Symbol(Symbol::Comma) => {
+                Token::Comma => {
                     self.advance();
                 }
                 _ => {
@@ -185,10 +185,10 @@ impl Parser {
             return Err(ParseError::new("can't peek"));
         }
         let t = self.tokens[self.index].clone();
-        if t == Token::Symbol(Symbol::LeftBracket) {
+        if t == Token::LeftBracket {
             // [
             return self.parse_array();
-        } else if t == Token::Symbol(Symbol::LeftBrace) {
+        } else if t == Token::LeftBrace {
             // {
             return self.parse_object();
         }
@@ -213,8 +213,8 @@ impl Parser {
     }
 }
 
-pub fn parse<T: Into<String>>(input: T) -> Result<Value, ParseError> {
-    let mut lexer = Lexer::new(&input.into());
+pub fn parse(input: &str) -> Result<Value, ParseError> {
+    let mut lexer = Lexer::new(input);
     match lexer.lex() {
         Ok(tokens) => {
             let mut parser = Parser::new(tokens);
