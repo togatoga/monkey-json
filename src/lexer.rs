@@ -296,9 +296,9 @@ mod tests {
             Token::String(r#" \b \f \n \r \t \/ \" "#.to_string())
         );
 
-        let s = r#""\uD83D\uDE04\uD83D\uDE07""#;
+        let s = r#""\uD83D\uDE04\uD83D\uDE07\uD83D\uDC7A""#;
         let tokens = Lexer::new(&s).lex().unwrap();
-        assert_eq!(tokens[0], Token::String(r#"😄😇"#.to_string()));
+        assert_eq!(tokens[0], Token::String(r#"😄😇👺"#.to_string()));
     }
 
     #[test]
