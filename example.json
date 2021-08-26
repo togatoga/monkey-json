@@ -1,0 +1,16 @@
+
+   {
+    "number": 
+    123,
+    "boolean": true,
+    
+                "string": "togatoga",
+    "null": null,
+
+    "object": 
+              {
+       "array": [null, 
+        2e10]
+     }
+    
+   }
