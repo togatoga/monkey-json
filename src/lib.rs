@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, string::ParseError};
 mod lexer;
 use lexer::*;
 
@@ -104,9 +104,8 @@ impl Parser {
     fn parse_array(&mut self) -> Result<Value, ParserError> {
         //assert_eq!(self.peek(), Some(&Token::LeftBracket));
         let mut array = vec![];
-        let token = self
-            .peek()
-            .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?;
+        let token = self.peek_expect()?;
+
         if *token == Token::RightBracket {
             return Ok(Value::Array(array));
         }
@@ -114,9 +113,7 @@ impl Parser {
         loop {
             let value = self.parse()?;
             array.push(value);
-            let token = self
-                .next()
-                .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?;
+            let token = self.next_expect()?;
 
             match token {
                 Token::RightBracket => {
@@ -136,9 +133,7 @@ impl Parser {
     }
     fn parse_object(&mut self) -> Result<Value, ParserError> {
         let mut object = BTreeMap::new();
-        let token = self
-            .peek()
-            .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?;
+        let token = self.peek_expect()?;
 
         if *token == Token::RightBrace {
             return Ok(Value::Object(object));
@@ -146,14 +141,10 @@ impl Parser {
 
         loop {
             // "togatoga" : [1, 2, 3, 4]
-            let token1 = self
-                .next()
-                .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?
-                .clone();
+            let token1 = self.next_expect()?.clone();
 
-            let token2 = self
-                .next()
-                .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?;
+            let token2 = self.next_expect()?;
+
             match (token1, token2) {
                 (Token::String(key), Token::Colon) => {
                     object.insert(key, self.parse()?);
@@ -164,7 +155,7 @@ impl Parser {
                     ));
                 }
             }
-            let token3 = self.next().unwrap().clone();
+            let token3 = self.next_expect()?;
             match token3 {
                 Token::RightBrace => {
                     return Ok(Value::Object(object));
@@ -203,12 +194,21 @@ impl Parser {
             }
         }
     }
-    fn peek(&mut self) -> Option<&Token> {
+
+    fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.index)
+    }
+    fn peek_expect(&self) -> Result<&Token, ParserError> {
+        self.peek()
+            .ok_or_else(|| ParserError::new("error: a token isn't peekable"))
     }
     fn next(&mut self) -> Option<&Token> {
         self.index += 1;
         self.tokens.get(self.index - 1)
+    }
+    fn next_expect(&mut self) -> Result<&Token, ParserError> {
+        self.next()
+            .ok_or_else(|| ParserError::new("error: a token isn't peekable"))
     }
 }
 
