@@ -42,36 +42,6 @@ impl std::ops::Index<usize> for Value {
     }
 }
 
-impl Value {
-    pub fn keys(&self) -> Vec<String> {
-        match self {
-            Value::Object(map) => {
-                let keys = map.keys().into_iter().cloned().collect();
-                keys
-            }
-            _ => {
-                panic!("A value is not object");
-            }
-        }
-    }
-    pub fn iter(&self) -> std::slice::Iter<Value> {
-        match self {
-            Value::Array(array) => array.iter(),
-            _ => {
-                panic!("A value is not array");
-            }
-        }
-    }
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<Value> {
-        match self {
-            Value::Array(array) => array.iter_mut(),
-            _ => {
-                panic!("A value is not array");
-            }
-        }
-    }
-}
-
 pub fn parse(input: &str) -> Result<Value, ParserError> {
     match Lexer::new(input).tokenize() {
         Ok(tokens) => Parser::new(tokens).parse(),
