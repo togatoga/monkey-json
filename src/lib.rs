@@ -3,13 +3,13 @@ mod lexer;
 use lexer::*;
 
 #[derive(Debug, Clone)]
-pub struct ParseError {
+pub struct ParserError {
     msg: String,
 }
 
-impl ParseError {
-    fn new(msg: &str) -> ParseError {
-        ParseError {
+impl ParserError {
+    fn new(msg: &str) -> ParserError {
+        ParserError {
             msg: msg.to_string(),
         }
     }
@@ -101,12 +101,12 @@ impl Parser {
     fn new(tokens: Vec<Token>) -> Parser {
         Parser { tokens, index: 0 }
     }
-    fn parse_array(&mut self) -> Result<Value, ParseError> {
+    fn parse_array(&mut self) -> Result<Value, ParserError> {
         //assert_eq!(self.peek(), Some(&Token::LeftBracket));
         let mut array = vec![];
         let token = self
             .peek()
-            .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?;
+            .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?;
         if *token == Token::RightBracket {
             return Ok(Value::Array(array));
         }
@@ -116,7 +116,7 @@ impl Parser {
             array.push(value);
             let token = self
                 .next()
-                .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?;
+                .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?;
 
             match token {
                 Token::RightBracket => {
@@ -126,7 +126,7 @@ impl Parser {
                     continue;
                 }
                 _ => {
-                    return Err(ParseError::new(&format!(
+                    return Err(ParserError::new(&format!(
                         "error: a [ or , token is expected {:?}",
                         token
                     )));
@@ -134,11 +134,11 @@ impl Parser {
             }
         }
     }
-    fn parse_object(&mut self) -> Result<Value, ParseError> {
+    fn parse_object(&mut self) -> Result<Value, ParserError> {
         let mut object = BTreeMap::new();
         let token = self
             .peek()
-            .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?;
+            .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?;
 
         if *token == Token::RightBrace {
             return Ok(Value::Object(object));
@@ -148,18 +148,18 @@ impl Parser {
             // "togatoga" : [1, 2, 3, 4]
             let token1 = self
                 .next()
-                .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?
+                .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?
                 .clone();
 
             let token2 = self
                 .next()
-                .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?;
+                .ok_or_else(|| ParserError::new("error: a token isn't peekable"))?;
             match (token1, token2) {
                 (Token::String(key), Token::Colon) => {
                     object.insert(key, self.parse()?);
                 }
                 _ => {
-                    return Err(ParseError::new(
+                    return Err(ParserError::new(
                         "error: a pair (key(string) and : token) token is expected",
                     ));
                 }
@@ -174,7 +174,7 @@ impl Parser {
                     continue;
                 }
                 _ => {
-                    return Err(ParseError::new(&format!(
+                    return Err(ParserError::new(&format!(
                         "error: a {{ or , token is expected {:?}",
                         token3
                     )));
@@ -183,10 +183,10 @@ impl Parser {
         }
     }
 
-    fn parse(&mut self) -> Result<Value, ParseError> {
+    fn parse(&mut self) -> Result<Value, ParserError> {
         let token = self
             .next()
-            .ok_or_else(|| ParseError::new("error: no token"))?
+            .ok_or_else(|| ParserError::new("error: no token"))?
             .clone();
         match token {
             Token::LeftBrace => self.parse_object(),
@@ -196,7 +196,7 @@ impl Parser {
             Token::Bool(b) => Ok(Value::Bool(b)),
             Token::Null => Ok(Value::Null),
             _ => {
-                return Err(ParseError::new(&format!(
+                return Err(ParserError::new(&format!(
                     "error: a token must start {{ or [ or string or number or bool or null {:?}",
                     token
                 )))
@@ -212,13 +212,9 @@ impl Parser {
     }
 }
 
-pub fn parse(input: &str) -> Result<Value, ParseError> {
-    let mut lexer = Lexer::new(input);
-    match lexer.tokenize() {
-        Ok(tokens) => {
-            let mut parser = Parser::new(tokens);
-            parser.parse()
-        }
-        Err(e) => Err(ParseError::new(&e.msg)),
+pub fn parse(input: &str) -> Result<Value, ParserError> {
+    match Lexer::new(input).tokenize() {
+        Ok(tokens) => Parser::new(tokens).parse(),
+        Err(e) => Err(ParserError::new(&e.msg)),
     }
 }
