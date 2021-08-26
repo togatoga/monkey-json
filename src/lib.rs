@@ -104,7 +104,10 @@ impl Parser {
     fn parse_array(&mut self) -> Result<Value, ParseError> {
         //assert_eq!(self.peek(), Some(&Token::LeftBracket));
         let mut array = vec![];
-        if self.next() == Some(&Token::RightBracket) {
+        let token = self
+            .peek()
+            .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?;
+        if *token == Token::RightBracket {
             return Ok(Value::Array(array));
         }
 
@@ -133,8 +136,11 @@ impl Parser {
     }
     fn parse_object(&mut self) -> Result<Value, ParseError> {
         let mut object = BTreeMap::new();
-        let token = self.peek();
-        if token == Some(&Token::RightBrace) {
+        let token = self
+            .peek()
+            .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?;
+
+        if *token == Token::RightBrace {
             return Ok(Value::Object(object));
         }
 
@@ -191,7 +197,7 @@ impl Parser {
             Token::Null => Ok(Value::Null),
             _ => {
                 return Err(ParseError::new(&format!(
-                    "error: a token must starts {{ or [ or string or number or bool or null {:?}",
+                    "error: a token must start {{ or [ or string or number or bool or null {:?}",
                     token
                 )))
             }
