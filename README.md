@@ -10,13 +10,15 @@ You can use `monkey-json` as a command line tool(`mj`).
 
 `mj` is a command line JSON minimum prettier like [`jq` ](https://github.com/stedolan/jq).
 
+![Alt Text](https://raw.githubusercontent.com/togatoga/monkey-json/main/demo.gif)
 
-### How to install
+
+### install
 ```bash
 cargo install --git https://github.com/togatoga/monkey-json
 ```
 
-### How to use
+### How to
 
 ```bash
 % mj --help                                                       
@@ -29,8 +31,13 @@ OPTIONS:
        -h,--help      Print help information
        -c,--color     Color JSON output
        -m,--minimize  Minimize JSON output
+# basic
+% echo '{"key": "value"}' | mj   
+{
+   "key": "value"
+}
+# `-c` or `--color`
+% mj --color example.json
+# `-m` or `--minimize`
+% mj --minimize example.json
 ```
-
-### Prettier JSON(color, minimize)
-
-
