@@ -16,7 +16,7 @@ pub enum Token {
 }
 
 pub struct Lexer<'a> {
-    pub chars: Peekable<Chars<'a>>,
+    chars: Peekable<Chars<'a>>,
 }
 
 #[derive(Debug)]

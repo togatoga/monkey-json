@@ -1,23 +1,10 @@
 use std::collections::BTreeMap;
 
 use lexer::Lexer;
-use parser::Parser;
+use parser::{Parser, ParserError};
 
 mod lexer;
 mod parser;
-
-#[derive(Debug, Clone)]
-pub struct ParserError {
-    msg: String,
-}
-
-impl ParserError {
-    fn new(msg: &str) -> ParserError {
-        ParserError {
-            msg: msg.to_string(),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub enum Value {

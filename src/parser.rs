@@ -1,7 +1,19 @@
 use std::collections::BTreeMap;
 
-use crate::{lexer::Token, ParserError, Value};
+use crate::{lexer::Token, Value};
 
+#[derive(Debug, Clone)]
+pub struct ParserError {
+    pub msg: String,
+}
+
+impl ParserError {
+    pub fn new(msg: &str) -> ParserError {
+        ParserError {
+            msg: msg.to_string(),
+        }
+    }
+}
 pub struct Parser {
     tokens: Vec<Token>,
     index: usize,
