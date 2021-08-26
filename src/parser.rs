@@ -223,4 +223,28 @@ mod test {
         ])]);
         assert_eq!(value, array);
     }
+
+    #[test]
+    fn test_parse() {
+        let json = r#"{"key" : [1, "value"]}"#;
+        let value = Parser::new(Lexer::new(json).tokenize().unwrap())
+            .parse()
+            .unwrap();
+        let mut object = BTreeMap::new();
+        object.insert(
+            "key".to_string(),
+            Value::Array(vec![Value::Number(1.0), Value::String("value".to_string())]),
+        );
+        assert_eq!(value, Value::Object(object));
+
+        let json = r#"[{"key": "value"}]"#;
+        let value = Parser::new(Lexer::new(json).tokenize().unwrap())
+            .parse()
+            .unwrap();
+        let mut object = BTreeMap::new();
+        object.insert("key".to_string(), Value::String("value".to_string()));
+
+        let array = Value::Array(vec![Value::Object(object)]);
+        assert_eq!(value, array);
+    }
 }
