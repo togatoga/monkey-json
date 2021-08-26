@@ -39,7 +39,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn consume_return_token(&mut self, token: Token) -> Option<Token> {
+    fn next_return_token(&mut self, token: Token) -> Option<Token> {
         self.chars.next();
         Some(token)
     }
@@ -48,14 +48,14 @@ impl<'a> Lexer<'a> {
         match self.chars.peek() {
             Some(c) => match c {
                 c if c.is_whitespace() || *c == '\n' => {
-                    Ok(self.consume_return_token(Token::WhiteSpace))
+                    Ok(self.next_return_token(Token::WhiteSpace))
                 }
-                '{' => Ok(self.consume_return_token(Token::LeftBrace)),
-                '}' => Ok(self.consume_return_token(Token::RightBrace)),
-                '[' => Ok(self.consume_return_token(Token::LeftBracket)),
-                ']' => Ok(self.consume_return_token(Token::RightBracket)),
-                ',' => Ok(self.consume_return_token(Token::Comma)),
-                ':' => Ok(self.consume_return_token(Token::Colon)),
+                '{' => Ok(self.next_return_token(Token::LeftBrace)),
+                '}' => Ok(self.next_return_token(Token::RightBrace)),
+                '[' => Ok(self.next_return_token(Token::LeftBracket)),
+                ']' => Ok(self.next_return_token(Token::RightBracket)),
+                ',' => Ok(self.next_return_token(Token::Comma)),
+                ':' => Ok(self.next_return_token(Token::Colon)),
                 // "togatoga"
                 '"' => {
                     // parse string
