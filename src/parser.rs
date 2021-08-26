@@ -24,7 +24,15 @@ impl Parser {
         Parser { tokens, index: 0 }
     }
     fn parse_array(&mut self) -> Result<Value, ParserError> {
-        //assert_eq!(self.peek(), Some(&Token::LeftBracket));
+        let token = self.peek_expect()?;
+        if *token != Token::LeftBracket {
+            return Err(ParserError::new(&format!(
+                "error: JSON array must starts [ {:?}",
+                token
+            )));
+        }
+        self.next_expect()?;
+
         let mut array = vec![];
         let token = self.peek_expect()?;
 
@@ -54,10 +62,18 @@ impl Parser {
         }
     }
     fn parse_object(&mut self) -> Result<Value, ParserError> {
-        let mut object = BTreeMap::new();
         let token = self.peek_expect()?;
+        if *token != Token::LeftBrace {
+            return Err(ParserError::new(&format!(
+                "error: JSON object must starts {{ {:?}",
+                token
+            )));
+        }
+        self.next_expect()?;
 
-        if *token == Token::RightBrace {
+        let mut object = BTreeMap::new();
+
+        if *self.peek_expect()? == Token::RightBrace {
             return Ok(Value::Object(object));
         }
 
@@ -97,24 +113,34 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Value, ParserError> {
-        let token = self
-            .next()
-            .ok_or_else(|| ParserError::new("error: no token"))?
-            .clone();
-        match token {
+        let token = self.peek_expect()?.clone();
+        let value = match token {
             Token::LeftBrace => self.parse_object(),
             Token::LeftBracket => self.parse_array(),
-            Token::String(s) => Ok(Value::String(s)),
-            Token::Number(n) => Ok(Value::Number(n)),
-            Token::Bool(b) => Ok(Value::Bool(b)),
-            Token::Null => Ok(Value::Null),
+            Token::String(s) => {
+                self.next_expect()?;
+                Ok(Value::String(s))
+            }
+            Token::Number(n) => {
+                self.next_expect()?;
+                Ok(Value::Number(n))
+            }
+            Token::Bool(b) => {
+                self.next_expect()?;
+                Ok(Value::Bool(b))
+            }
+            Token::Null => {
+                self.next_expect()?;
+                Ok(Value::Null)
+            }
             _ => {
                 return Err(ParserError::new(&format!(
                     "error: a token must start {{ or [ or string or number or bool or null {:?}",
                     token
                 )))
             }
-        }
+        };
+        value
     }
 
     fn peek(&self) -> Option<&Token> {
@@ -131,5 +157,70 @@ impl Parser {
     fn next_expect(&mut self) -> Result<&Token, ParserError> {
         self.next()
             .ok_or_else(|| ParserError::new("error: a token isn't peekable"))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::BTreeMap;
+
+    use crate::{lexer::Lexer, Value};
+
+    use super::Parser;
+
+    #[test]
+    fn test_parse_object() {
+        let json = r#"{"togatoga" : "monkey-json"}"#;
+        let value = Parser::new(Lexer::new(json).tokenize().unwrap())
+            .parse()
+            .unwrap();
+        let mut object = BTreeMap::new();
+        object.insert(
+            "togatoga".to_string(),
+            Value::String("monkey-json".to_string()),
+        );
+        assert_eq!(value, Value::Object(object));
+
+        let json = r#"
+        {
+            "key": {
+                "key": false
+            }
+        }
+        "#;
+
+        let value = Parser::new(Lexer::new(json).tokenize().unwrap())
+            .parse()
+            .unwrap();
+        let mut object = BTreeMap::new();
+        let mut nested_object = BTreeMap::new();
+        nested_object.insert("key".to_string(), Value::Bool(false));
+        object.insert("key".to_string(), Value::Object(nested_object));
+        assert_eq!(value, Value::Object(object));
+    }
+
+    #[test]
+    fn test_parse_array() {
+        let json = r#"[null, 1, true, "monkey-json"]"#;
+        let value = Parser::new(Lexer::new(json).tokenize().unwrap())
+            .parse()
+            .unwrap();
+        let array = Value::Array(vec![
+            Value::Null,
+            Value::Number(1.0),
+            Value::Bool(true),
+            Value::String("monkey-json".to_string()),
+        ]);
+        assert_eq!(value, array);
+
+        let json = r#"[["togatoga", 123]]"#;
+        let value = Parser::new(Lexer::new(json).tokenize().unwrap())
+            .parse()
+            .unwrap();
+        let array = Value::Array(vec![Value::Array(vec![
+            Value::String("togatoga".to_string()),
+            Value::Number(123.0),
+        ])]);
+        assert_eq!(value, array);
     }
 }

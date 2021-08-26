@@ -6,7 +6,7 @@ use parser::{Parser, ParserError};
 mod lexer;
 mod parser;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(f64),
     Bool(bool),
@@ -14,17 +14,6 @@ pub enum Value {
     Null,
     Array(Vec<Value>),
     Object(BTreeMap<String, Value>),
-}
-
-impl std::cmp::PartialEq<bool> for Value {
-    fn eq(&self, other: &bool) -> bool {
-        match self {
-            Value::Bool(b) => b == other,
-            _ => {
-                panic!("A value is not bool");
-            }
-        }
-    }
 }
 
 impl std::ops::Index<&str> for Value {
