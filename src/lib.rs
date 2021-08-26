@@ -102,114 +102,107 @@ impl Parser {
         Parser { tokens, index: 0 }
     }
     fn parse_array(&mut self) -> Result<Value, ParseError> {
-        assert_eq!(self.peek(), Some(&Token::LeftBracket));
-        self.advance();
+        //assert_eq!(self.peek(), Some(&Token::LeftBracket));
         let mut array = vec![];
-        if self.peek() == Some(&Token::RightBracket) {
-            self.advance();
+        if self.next() == Some(&Token::RightBracket) {
             return Ok(Value::Array(array));
         }
-        while self.peekable() {
-            let value = self.parse().expect("failed to parse a value");
+
+        loop {
+            let value = self.parse()?;
             array.push(value);
-            let token = self.peek().unwrap();
+            let token = self
+                .next()
+                .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?;
+
             match token {
                 Token::RightBracket => {
-                    self.advance();
                     return Ok(Value::Array(array));
                 }
                 Token::Comma => {
-                    self.advance();
+                    continue;
                 }
                 _ => {
-                    panic!("Expected comma after object in array: {:?}", token);
+                    return Err(ParseError::new(&format!(
+                        "error: a [ or , token is expected {:?}",
+                        token
+                    )));
                 }
             }
         }
-        Err(ParseError::new("Failed to parse array"))
     }
     fn parse_object(&mut self) -> Result<Value, ParseError> {
-        assert_eq!(self.peek(), Some(&Token::LeftBrace));
-        self.advance();
         let mut object = BTreeMap::new();
         let token = self.peek();
         if token == Some(&Token::RightBrace) {
             return Ok(Value::Object(object));
         }
 
-        while self.peekable() {
-            // {"togatoga": 10}
+        loop {
+            // "togatoga" : [1, 2, 3, 4]
+            let token1 = self
+                .next()
+                .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?
+                .clone();
 
-            // "togatoga"
-            let token = self.peek().unwrap().clone();
-            let key = match token {
-                Token::String(key) => {
-                    self.advance();
-                    key
+            let token2 = self
+                .next()
+                .ok_or_else(|| ParseError::new("error: a token isn't peekable"))?;
+            match (token1, token2) {
+                (Token::String(key), Token::Colon) => {
+                    object.insert(key, self.parse()?);
                 }
                 _ => {
-                    panic!("Expected string key");
+                    return Err(ParseError::new(
+                        "error: a pair (key(string) and : token) token is expected",
+                    ));
                 }
-            };
-            // :
-            if self.peek() == Some(&Token::Colon) {
-                self.advance();
-            } else {
-                panic!("Expected colon after key in object");
             }
-            // 10
-            let value = self.parse().expect("failed to parse a value");
-            object.insert(key.clone(), value);
-
-            // }
-            let token = self.peek().unwrap().clone();
-            match token {
+            let token3 = self.next().unwrap().clone();
+            match token3 {
                 Token::RightBrace => {
-                    self.advance();
                     return Ok(Value::Object(object));
                 }
                 Token::Comma => {
-                    self.advance();
+                    // next token
+                    continue;
                 }
                 _ => {
-                    panic!("Expected comma after key-value in obeject: {:?}", token);
+                    return Err(ParseError::new(&format!(
+                        "error: a {{ or , token is expected {:?}",
+                        token3
+                    )));
                 }
             }
         }
-
-        Err(ParseError::new("Failed to parse object"))
     }
 
     fn parse(&mut self) -> Result<Value, ParseError> {
-        if !self.peekable() {
-            return Err(ParseError::new("can't peek"));
+        let token = self
+            .next()
+            .ok_or_else(|| ParseError::new("error: no token"))?
+            .clone();
+        match token {
+            Token::LeftBrace => self.parse_object(),
+            Token::LeftBracket => self.parse_array(),
+            Token::String(s) => Ok(Value::String(s)),
+            Token::Number(n) => Ok(Value::Number(n)),
+            Token::Bool(b) => Ok(Value::Bool(b)),
+            Token::Null => Ok(Value::Null),
+            _ => {
+                return Err(ParseError::new(&format!(
+                    "error: a token must starts {{ or [ or string or number or bool or null {:?}",
+                    token
+                )))
+            }
         }
-        let t = self.tokens[self.index].clone();
-        if t == Token::LeftBracket {
-            // [
-            return self.parse_array();
-        } else if t == Token::LeftBrace {
-            // {
-            return self.parse_object();
-        }
-        let value = match t {
-            Token::String(s) => Value::String(s),
-            Token::Number(n) => Value::Number(n),
-            Token::Bool(b) => Value::Bool(b),
-            Token::Null => Value::Null,
-            _ => panic!("failed to parse"),
-        };
-        self.advance();
-        Ok(value)
     }
-    fn advance(&mut self) {
-        self.index += 1;
-    }
-    fn peek(&self) -> Option<&Token> {
+    fn peek(&mut self) -> Option<&Token> {
         self.tokens.get(self.index)
     }
-    fn peekable(&self) -> bool {
-        self.index < self.tokens.len()
+    fn next(&mut self) -> Option<&Token> {
+        self.index += 1;
+        self.tokens.get(self.index - 1)
     }
 }
 
