@@ -215,7 +215,7 @@ impl Parser {
 
 pub fn parse(input: &str) -> Result<Value, ParseError> {
     let mut lexer = Lexer::new(input);
-    match lexer.lex() {
+    match lexer.tokenize() {
         Ok(tokens) => {
             let mut parser = Parser::new(tokens);
             parser.parse()

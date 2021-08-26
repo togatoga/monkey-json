@@ -70,15 +70,14 @@ impl<'a> Lexer<'a> {
                 'f' => self.parse_bool_token(false),
                 // null
                 'n' => self.parse_null_token(),
-                _ => Ok(None),
+                _ => Err(LexerError::new(&format!("error: an unexpected char {}", c))),
             },
             None => Ok(None),
         }
     }
 
-    pub fn lex(&mut self) -> Result<Vec<Token>, LexerError> {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
         let mut tokens = vec![];
-
         while let Some(token) = self.next_token()? {
             match token {
                 Token::WhiteSpace => {}
@@ -228,62 +227,62 @@ mod tests {
     fn test_number() {
         //integer
         let num = "1234567890";
-        let tokens = Lexer::new(num).lex().unwrap();
+        let tokens = Lexer::new(num).tokenize().unwrap();
         assert_eq!(tokens[0], Token::Number(1234567890f64));
 
         //float
         let num = "-0.001";
-        let tokens = Lexer::new(num).lex().unwrap();
+        let tokens = Lexer::new(num).tokenize().unwrap();
         assert_eq!(tokens[0], Token::Number(-0.001));
 
         // exponent
         let num = "1e-10";
-        let tokens = Lexer::new(num).lex().unwrap();
+        let tokens = Lexer::new(num).tokenize().unwrap();
         assert_eq!(tokens[0], Token::Number(0.0000000001));
     }
 
     #[test]
     fn test_bool() {
         let b = "true";
-        let tokens = Lexer::new(b).lex().unwrap();
+        let tokens = Lexer::new(b).tokenize().unwrap();
         assert_eq!(tokens[0], Token::Bool(true));
 
         let b = "false";
-        let tokens = Lexer::new(b).lex().unwrap();
+        let tokens = Lexer::new(b).tokenize().unwrap();
         assert_eq!(tokens[0], Token::Bool(false));
     }
 
     #[test]
     fn test_string() {
         let s = "\"togatoga123\"";
-        let tokens = Lexer::new(s).lex().unwrap();
+        let tokens = Lexer::new(s).tokenize().unwrap();
         assert_eq!(tokens[0], Token::String("togatoga123".to_string()));
 
         let s = "\"あいうえお\"";
-        let tokens = Lexer::new(s).lex().unwrap();
+        let tokens = Lexer::new(s).tokenize().unwrap();
         assert_eq!(tokens[0], Token::String("あいうえお".to_string()));
 
         let s = r#""\u3042\u3044\u3046abc""#; //あいうabc
 
-        let tokens = Lexer::new(s).lex().unwrap();
+        let tokens = Lexer::new(s).tokenize().unwrap();
         assert_eq!(tokens[0], Token::String("あいうabc".to_string()));
 
         let s = format!(r#" " \b \f \n \r \t \/ \" ""#);
-        let tokens = Lexer::new(&s).lex().unwrap();
+        let tokens = Lexer::new(&s).tokenize().unwrap();
         assert_eq!(
             tokens[0],
             Token::String(r#" \b \f \n \r \t \/ \" "#.to_string())
         );
 
         let s = r#""\uD83D\uDE04\uD83D\uDE07\uD83D\uDC7A""#;
-        let tokens = Lexer::new(&s).lex().unwrap();
+        let tokens = Lexer::new(&s).tokenize().unwrap();
         assert_eq!(tokens[0], Token::String(r#"😄😇👺"#.to_string()));
     }
 
     #[test]
     fn test_null() {
         let null = "null";
-        let tokens = Lexer::new(null).lex().unwrap();
+        let tokens = Lexer::new(null).tokenize().unwrap();
         assert_eq!(tokens[0], Token::Null);
     }
 
@@ -300,7 +299,7 @@ mod tests {
          }
          "#;
 
-        let tokens = Lexer::new(obj).lex().unwrap();
+        let tokens = Lexer::new(obj).tokenize().unwrap();
         let result_tokens = [
             // start {
             Token::LeftBrace,
@@ -350,7 +349,7 @@ mod tests {
     #[test]
     fn test_array() {
         let a = "[true, {\"キー\": null}]";
-        let tokens = Lexer::new(a).lex().unwrap();
+        let tokens = Lexer::new(a).tokenize().unwrap();
         let result_tokens = vec![
             Token::LeftBracket,
             Token::Bool(true),
