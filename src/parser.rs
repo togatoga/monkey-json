@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::{lexer::Token, Value};
 
 #[derive(Debug, Clone)]
@@ -71,7 +69,7 @@ impl Parser {
         }
         self.next_expect()?;
 
-        let mut object = BTreeMap::new();
+        let mut object = std::collections::BTreeMap::new();
 
         if *self.peek_expect()? == Token::RightBrace {
             return Ok(Value::Object(object));
