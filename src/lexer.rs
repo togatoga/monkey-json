@@ -41,6 +41,21 @@ impl<'a> Lexer<'a> {
             chars: input.chars().peekable(),
         }
     }
+    /// 文字列をToken単位に分割をする
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
+        let mut tokens = vec![];
+        while let Some(token) = self.next_token()? {
+            match token {
+                // 空白は今回は捨てるがデバッグ情報として使える(行、列)
+                Token::WhiteSpace => {}
+                _ => {
+                    tokens.push(token);
+                }
+            }
+        }
+        Ok(tokens)
+    }
+
     /// 一文字分だけ読み進め、tokenを返す
     fn next_return_token(&mut self, token: Token) -> Option<Token> {
         self.chars.next();
@@ -99,24 +114,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// 文字列をToken単位に分割をする
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
-        let mut tokens = vec![];
-        while let Some(token) = self.next_token()? {
-            match token {
-                // 空白は今回は捨てる
-                // 本当はデバッグ情報には便利(行、列)
-                Token::WhiteSpace => {}
-                _ => {
-                    tokens.push(token);
-                }
-            }
-        }
-
-        Ok(tokens)
-    }
-
-    /// nullの文字列をparseして、読み込んだ文字列分だけ読み進める。
+    /// nullの文字列をparseする
     fn parse_null_token(&mut self) -> Result<Option<Token>, LexerError> {
         let s = (0..4).filter_map(|_| self.chars.next()).collect::<String>();
 
@@ -129,7 +127,7 @@ impl<'a> Lexer<'a> {
             )))
         }
     }
-    /// (true|false)の文字列をparseして、読み込んだ文字列分だけ読み進める。
+    /// (true|false)の文字列をparseする
     fn parse_bool_token(&mut self, b: bool) -> Result<Option<Token>, LexerError> {
         if b {
             let s = (0..4).filter_map(|_| self.chars.next()).collect::<String>();
@@ -155,7 +153,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// 数字として使いそうな文字まで読み込む。読み込んだ文字列が数字(`f64)としてParseに成功した場合Tokenを返す。
+    /// 数字として使用可能な文字まで読み込む。読み込んだ文字列が数字(`f64`)としてParseに成功した場合Tokenを返す。
     fn parse_number_token(&mut self) -> Result<Option<Token>, LexerError> {
         let mut number_str = String::new();
         while let Some(&c) = self.chars.peek() {
@@ -176,23 +174,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn push_utf16(result: &mut String, utf16: &mut Vec<u16>) -> Result<(), LexerError> {
-        if utf16.is_empty() {
-            return Ok(());
-        }
-        match String::from_utf16(utf16) {
-            Ok(utf16_str) => {
-                result.push_str(&utf16_str);
-                utf16.clear();
-            }
-            Err(e) => {
-                return Err(LexerError::new(&format!("error: {}", e.to_string())));
-            }
-        };
-        Ok(())
-    }
-
-    /// 文字列を
+    /// 終端文字'\"'まで文字列を読み込む。UTF-16(\u0000~\uFFFF)や特殊なエスケープ文字(e.g. '\t','\n')も考慮する
     fn parse_string_token(&mut self) -> Result<Option<Token>, LexerError> {
         let mut utf16 = vec![];
         let mut result = String::new();
@@ -262,6 +244,23 @@ impl<'a> Lexer<'a> {
             }
         }
         Ok(None)
+    }
+
+    /// utf16のバッファが存在するならば連結しておく
+    fn push_utf16(result: &mut String, utf16: &mut Vec<u16>) -> Result<(), LexerError> {
+        if utf16.is_empty() {
+            return Ok(());
+        }
+        match String::from_utf16(utf16) {
+            Ok(utf16_str) => {
+                result.push_str(&utf16_str);
+                utf16.clear();
+            }
+            Err(e) => {
+                return Err(LexerError::new(&format!("error: {}", e.to_string())));
+            }
+        };
+        Ok(())
     }
 }
 
