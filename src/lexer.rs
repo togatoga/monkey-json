@@ -274,15 +274,27 @@ mod tests {
         let tokens = Lexer::new(num).tokenize().unwrap();
         assert_eq!(tokens[0], Token::Number(1234567890f64));
 
+        let num = "+123";
+        let tokens = Lexer::new(num).tokenize().unwrap();
+        assert_eq!(tokens[0], Token::Number(123f64));
+
         //float
         let num = "-0.001";
         let tokens = Lexer::new(num).tokenize().unwrap();
         assert_eq!(tokens[0], Token::Number(-0.001));
 
+        let num = ".001";
+        let tokens = Lexer::new(num).tokenize().unwrap();
+        assert_eq!(tokens[0], Token::Number(0.001));
+
         // exponent
         let num = "1e-10";
         let tokens = Lexer::new(num).tokenize().unwrap();
         assert_eq!(tokens[0], Token::Number(0.0000000001));
+
+        let num = "+2E10";
+        let tokens = Lexer::new(num).tokenize().unwrap();
+        assert_eq!(tokens[0], Token::Number(20000000000f64));
     }
 
     #[test]
