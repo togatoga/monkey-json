@@ -56,13 +56,13 @@ impl<'a> Lexer<'a> {
         Ok(tokens)
     }
 
-    /// 一文字分だけ読み進め、tokenを返す
+    /// 一文字分だけ読み進めTokenを返す
     fn next_return_token(&mut self, token: Token) -> Option<Token> {
         self.chars.next();
         Some(token)
     }
 
-    /// 文字列を読み込み、マッチしたTokenを返す
+    /// 先頭の文字からマッチしたTokenを返す
     fn next_token(&mut self) -> Result<Option<Token>, LexerError> {
         // 先頭の文字列を読み込む
         match self.chars.peek() {
