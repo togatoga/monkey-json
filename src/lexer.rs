@@ -343,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    fn test_object() {
+    fn test_tokenize() {
         let obj = r#"
         {
             "number": 123,
@@ -354,7 +354,7 @@ mod tests {
             }
          }
          "#;
-
+        // object
         let tokens = Lexer::new(obj).tokenize().unwrap();
         let result_tokens = [
             // start {
@@ -401,9 +401,8 @@ mod tests {
             .for_each(|(i, (x, y))| {
                 assert_eq!(x, y, "index: {}", i);
             });
-    }
-    #[test]
-    fn test_array() {
+
+        // array
         let a = "[true, {\"キー\": null}]";
         let tokens = Lexer::new(a).tokenize().unwrap();
         let result_tokens = vec![
