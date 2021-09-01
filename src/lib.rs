@@ -8,14 +8,25 @@ mod parser;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    Number(f64),
-    Bool(bool),
-    String(String),
-    Null,
-    Array(Vec<Value>),
-    Object(BTreeMap<String, Value>),
+    String(String),                  // 文字列
+    Number(f64),                     // 数値
+    Bool(bool),                      // 真偽値
+    Null,                            // Null
+    Array(Vec<Value>),               // JSON Array
+    Object(BTreeMap<String, Value>), // JSON Object
 }
 
+/// ユーザーのエンドポイント
+/// 入力のJSONの文字列から`Value`を返す
+pub fn parse(input: &str) -> Result<Value, ParserError> {
+    match Lexer::new(input).tokenize() {
+        Ok(tokens) => Parser::new(tokens).parse(),
+        Err(e) => Err(ParserError::new(&e.msg)),
+    }
+}
+
+/// {"key": true}
+/// v["key"] => Value::Bool(true)
 impl std::ops::Index<&str> for Value {
     type Output = Value;
     fn index(&self, key: &str) -> &Self::Output {
@@ -30,6 +41,8 @@ impl std::ops::Index<&str> for Value {
     }
 }
 
+/// [null, false, 3]
+/// v[3] => Value::Number(3f64)
 impl std::ops::Index<usize> for Value {
     type Output = Value;
     fn index(&self, idx: usize) -> &Self::Output {
@@ -39,12 +52,5 @@ impl std::ops::Index<usize> for Value {
                 panic!("A value is not array");
             }
         }
-    }
-}
-
-pub fn parse(input: &str) -> Result<Value, ParserError> {
-    match Lexer::new(input).tokenize() {
-        Ok(tokens) => Parser::new(tokens).parse(),
-        Err(e) => Err(ParserError::new(&e.msg)),
     }
 }
