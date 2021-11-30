@@ -1,5 +1,7 @@
 # monkey-json
 
+[RustでJSONパーサーをフルスクラッチで実装する](https://qiita.com/togatoga/items/9d600e20325775f09547)
+
 `monkey-json` project is just for fun. I want to write JSON parser from the scratch.  
 The implementation of `monkey-json` conforms to [RFC8259](https://www.rfc-editor.org/rfc/rfc8259) as possible as I can.  
 I disregarded some rules on [RFC8259](https://www.rfc-editor.org/rfc/rfc8259). Because It's super boring to keep consistency with them(especially `Number`).  
