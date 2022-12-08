@@ -170,7 +170,7 @@ impl<'a> Lexer<'a> {
         // 読み込んだ文字列が`f64`としてparse出来た場合、Tokenを返す
         match number_str.parse::<f64>() {
             Ok(number) => Ok(Some(Token::Number(number))),
-            Err(e) => Err(LexerError::new(&format!("error: {}", e.to_string()))),
+            Err(e) => Err(LexerError::new(&format!("error: {}", e))),
         }
     }
 
@@ -218,7 +218,7 @@ impl<'a> Lexer<'a> {
                             Err(e) => {
                                 return Err(LexerError::new(&format!(
                                     "error: a unicode character is expected {}",
-                                    e.to_string()
+                                    e
                                 )))
                             }
                         };
@@ -257,7 +257,7 @@ impl<'a> Lexer<'a> {
                 utf16.clear();
             }
             Err(e) => {
-                return Err(LexerError::new(&format!("error: {}", e.to_string())));
+                return Err(LexerError::new(&format!("error: {}", e)));
             }
         };
         Ok(())
@@ -323,7 +323,7 @@ mod tests {
         let tokens = Lexer::new(s).tokenize().unwrap();
         assert_eq!(tokens[0], Token::String("あいうabc".to_string()));
 
-        let s = format!(r#" " \b \f \n \r \t \/ \" ""#);
+        let s = r#" " \b \f \n \r \t \/ \" ""#.to_string();
         let tokens = Lexer::new(&s).tokenize().unwrap();
         assert_eq!(
             tokens[0],
@@ -331,7 +331,7 @@ mod tests {
         );
 
         let s = r#""\uD83D\uDE04\uD83D\uDE07\uD83D\uDC7A""#;
-        let tokens = Lexer::new(&s).tokenize().unwrap();
+        let tokens = Lexer::new(s).tokenize().unwrap();
         assert_eq!(tokens[0], Token::String(r#"😄😇👺"#.to_string()));
     }
 
