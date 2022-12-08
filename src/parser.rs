@@ -43,6 +43,8 @@ impl Parser {
         let token = self.peek_expect()?;
         // ] なら空配列を返す
         if *token == Token::RightBracket {
+            // ] を読み飛ばす
+            self.next_expect()?;
             return Ok(Value::Array(array));
         }
 
@@ -93,6 +95,8 @@ impl Parser {
 
         // } なら空の`Object`を返す
         if *self.peek_expect()? == Token::RightBrace {
+            // } を読み飛ばす
+            self.next_expect()?;
             return Ok(Value::Object(object));
         }
 
@@ -206,6 +210,18 @@ mod test {
     use crate::{lexer::Lexer, Value};
 
     use super::Parser;
+
+    #[test]
+    fn test_parse_empty_array() {
+        let json = r#"{"a": [], "b": 1}"#;
+        let value = Parser::new(Lexer::new(json).tokenize().unwrap())
+            .parse()
+            .unwrap();
+        let mut object = BTreeMap::new();
+        object.insert("a".to_string(), Value::Array(vec![]));
+        object.insert("b".to_string(), Value::Number(1.0));
+        assert_eq!(value, Value::Object(object));
+    }
 
     #[test]
     fn test_parse_object() {
